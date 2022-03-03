@@ -1,6 +1,6 @@
 .homepage{
     padding: 0.4rem;
-    height: calc(100vh - 6.5rem); /* Pega a altura do vh e faz menos a altura do header */
+    height: calc(91.5vh - 6.5rem); /* Pega a altura do vh e faz menos a altura do header */
     overflow-y: scroll; /* faz com que o scroll funcione somente dentro do homepage 
     (player e hader ficam fixos) */
 }
