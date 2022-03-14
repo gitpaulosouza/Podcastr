@@ -1,17 +1,20 @@
 import Image from 'next/image';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import Slider from 'rc-slider';
 
 
 import { usePlayer } from '../../contexts/PlayerContexts';
 
 import styles from './styles.module.css';
-import 'rc-slider/assets/index.css'
+import 'rc-slider/assets/index.css';
+import { convertDurationToTimeString } from '../../utils/convertDurationToTimeString';
+
 
 
 export function Player() {
 
     const audioRef = useRef<HTMLAudioElement>(null);
+    const [progress, setProgress] = useState(0);
 
     const { 
         episodeList, 
@@ -22,9 +25,12 @@ export function Player() {
         playNext,
         playPrevious,
         toggleLoop,
+        toggleShuffle,
         isLooping,
+        isShuffling,
         hasNext,
         hasPrevious,
+        clearPlayerState
     } = usePlayer();
 
     useEffect(() => {
@@ -37,6 +43,27 @@ export function Player() {
             audioRef.current.pause();
         }
     }, [isPlaying])
+
+    function setupProgressListener(){
+        audioRef.current.currentTime = 0;
+
+        audioRef.current.addEventListener('timeupdate', () => {
+            setProgress(Math.floor(audioRef.current.currentTime))
+        })
+    }
+
+    function handleSeek(amount: number){
+        audioRef.current.currentTime = amount;
+        setProgress(amount);
+    }
+
+    function handleEpisodeEnded(){
+        if (hasNext) {
+            playNext();
+        }else{
+            clearPlayerState();
+        }
+    }
 
     const episode = episodeList[currentEpisodeIndex];
 
@@ -66,17 +93,20 @@ export function Player() {
             <footer className={!episode ? styles.empty : ""}>
 
                 <div className={styles.progress}>
-                    <span>00:00</span>
+                    <span>{convertDurationToTimeString(progress)}</span>
                     <div className={styles.slider} >
                         {episode ? (
                             <Slider 
+                                max={episode.duration}
+                                value={progress}
+                                onChange={handleSeek}
                                 trackStyle={{ backgroundColor: '#04d361'}}
                                 railStyle={{ backgroundColor: '#9f75ff'}}
                                 handleStyle={{ borderColor: '#9f75ff'}}
                             />
                         ) : <div className={styles.emptySlider} />}
                     </div>
-                    <span>00:00</span>
+                    <span>{convertDurationToTimeString(episode?.duration ?? 0)}</span>
                 </div>
 
                 {episode &&(
@@ -85,13 +115,20 @@ export function Player() {
                         ref={audioRef}
                         loop={isLooping}
                         autoPlay
+                        onEnded={handleEpisodeEnded}
                         onPlay={() => setPlayingState(true)}
                         onPause={() => setPlayingState(false)}
+                        onLoadedMetadata={setupProgressListener}
                     />
                 )}
 
                 <div className={styles.buttons}>
-                    <button type="button" disabled={!episode}>
+                    <button 
+                        type="button" 
+                        disabled={!episode || episodeList.length === 1}
+                        onClick={toggleShuffle}
+                        className={isShuffling ? styles.isActive : ''}
+                    >
                         <img src="/shuffle.svg" alt="Embaralhar" />
                     </button>
 
@@ -103,7 +140,8 @@ export function Player() {
                         type="button" 
                         className={styles.playButton} 
                         disabled={!episode} 
-                        onClick={togglePlay}>
+                        onClick={togglePlay}
+                    >
                         {
                             isPlaying ? <img src="/pause.svg" alt="Tocar" />
                             :
